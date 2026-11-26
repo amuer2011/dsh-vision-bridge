@@ -1,0 +1,38 @@
+# dsh-vision-bridge — bundle patch for dsh profiles.
+#
+# Installing this package adds the row below to the profile it is installed in.
+# Override `config` from your own profile patch (`$DSH_HOME/profiles/<name>/cordis.patch.yml`)
+# with a row that uses the same `id`:
+#
+#   - id: vision-bridge
+#     name: 'dsh-vision-bridge'
+#     config:
+#       routes: ['commandcode-deepseek', 'shenwen']
+#       vision:
+#         backend: route
+#         provider: <a vision-capable provider route>
+#         model: <a vision-capable model>
+#
+# The row is inert until `vision` names a working backend: the plugin logs a
+# warning and stays disabled instead of changing request behaviour.
+- insert:
+    - id: vision-bridge
+      name: 'dsh-vision-bridge'
+      config:
+        # Provider routes whose models should accept images. Entries are
+        # `provider`, `provider/model`, or a `*` glob; `*` alone means every
+        # text-only route in the profile.
+        routes:
+          - '*'
+        # Report `image` input for those routes so prompts and `read_image`
+        # results are admitted instead of refused. Set false to only rewrite
+        # requests the harness already admits.
+        advertiseImages: true
+        # Keep failed captures visible to the model as a short note, or leave
+        # the image block alone so the harness's own placeholder applies.
+        onError: keep
+        # Uncomment after installation and point it at a vision model:
+        # vision:
+        #   backend: route
+        #   provider: your-vision-provider
+        #   model: your-vision-model

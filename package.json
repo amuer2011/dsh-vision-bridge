@@ -1,0 +1,42 @@
+{
+  "name": "dsh-vision-bridge",
+  "version": "0.1.0",
+  "description": "Image input for text-only models in DeepSeek Harness: accept image prompts and describe them to the model with a vision backend.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "vision",
+    "image",
+    "multimodal",
+    "compat"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.3"
+  },
+  "scripts": {
+    "test": "node --test test/unit/",
+    "test:real": "node --test test/real-runtime.test.mjs"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
