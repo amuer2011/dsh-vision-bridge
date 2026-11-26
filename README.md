@@ -93,13 +93,30 @@ dsh plugin --profile desktop add github:<你的用户名>/dsh-vision-bridge
 dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
 ```
 
-装好后编辑 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`（Desktop 默认是 `C:\Users\<你>\.dsh\profiles\desktop\cordis.patch.yml`），把这一行改成你的配置。
+装好后**通常什么都不用配**：插件默认 `routes: ['*']` + 自动探测视觉后端。想改行为时，编辑 profile 的 patch 文件：
+
+```
+C:\Users\<你>\.dsh\profiles\desktop\cordis.patch.yml
+```
+
+（就是 DSH 的 profile 补丁文件，一个 YAML 列表；安装插件后它里面本来就有别的行，在末尾追加 `- id: vision-bridge` 那一段即可，保存后 HMR 会自动重载。）
 
 ## 配置
 
-配置文件位置：`$DSH_HOME/profiles/desktop/cordis.patch.yml`。用 `id: vision-bridge` 覆盖插件自带的默认行。
+### 方案零：零配置（默认）
 
-### 方案一：复用已有的视觉模型路由
+什么都不写，插件在**第一次遇到图片时**自动挑一个能看图的模型当眼睛。探测顺序：
+
+1. `vision.prefer` 里点名的路由；
+2. **当前 profile 的默认模型**（设置 → 模型里选中的那个）；
+3. 各 provider 的模型目录里声明了 `image` 输入的模型；
+4. 每个 provider 上试 `vision.autoModels`（默认 `['deepseek-flash', 'deepseek-v4.1-flash']`）。
+
+每个候选都会用适配器真实的 `inputModalities` 校验，文本模型会被跳过；某个候选失败会自动换下一个。选中的路由写进日志：`[vision-bridge] auto vision: <provider>/<model>`。
+
+> 你的环境里默认模型是 `deepseek-account/deepseek-flash`（原生支持读图），所以会被直接选中当眼睛——`commandcode-deepseek`、`shenwen` 的会话里贴图就能用。
+
+### 方案一：复用已有的视觉模型路由（想固定用哪个时）
 
 ```yaml
 - id: vision-bridge
@@ -108,8 +125,8 @@ dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
     routes: ['commandcode-deepseek', 'shenwen']
     vision:
       backend: route
-      provider: openrouter          # 任意已配置、支持图片输入的路由
-      model: qwen2.5-vl-72b-instruct
+      provider: deepseek-account     # 任意已配置、支持图片输入的路由
+      model: deepseek-flash
 ```
 
 `provider` 就是「设置 → 模型」里那个路由的 key；`model` 必须是该路由下真正支持图片的模型。
@@ -138,7 +155,9 @@ dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
 | 字段 | 默认 | 说明 |
 | --- | --- | --- |
 | `routes` | `['*']` | 要桥接的路由。`provider`、`provider/model`，支持 `*` 通配；`'*'` 表示所有文本模型路由 |
-| `vision.backend` | 自动 | `route` 或 `endpoint`；填了 `baseURL` 时自动为 `endpoint` |
+| `vision.backend` | `auto` | `auto` / `route` / `endpoint`；填了 `baseURL` 时自动为 `endpoint`，只填 `provider`+`model` 时为 `route` |
+| `vision.prefer` | `[]` | `auto` 模式下优先尝试的路由（`provider` 或 `provider/model`） |
+| `vision.autoModels` | `['deepseek-flash', 'deepseek-v4.1-flash']` | `auto` 模式下在每个 provider 上试探的模型 id |
 | `vision.provider` / `vision.model` | — | `route` 后端必填 |
 | `vision.baseURL` / `vision.model` | — | `endpoint` 后端必填 |
 | `vision.api` | `chat-completions` | `chat-completions` 或 `responses` |
@@ -175,9 +194,11 @@ dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
 | 现象 | 处理 |
 | --- | --- |
 | 仍然报 `does not support image input` | `routes` 没匹配上。provider key 是「设置 → 模型」里的那一栏（例如 `commandcode-deepseek`），不是显示名 |
+| 自动探测没找到视觉模型（日志 `no image-capable route was found`） | 显式写 `vision.provider` + `vision.model`，或用 `vision.autoModels` 补上你环境里的视觉模型 id |
+| 自动探测挑错了模型 | 用 `vision.prefer: ['deepseek-account']` 或直接写死 `provider` + `model` |
 | 日志出现 `vision route ... does not accept image input` | `vision.provider/model` 指向的模型本身也不支持图片，换一个真正的视觉模型 |
 | 日志出现 `vision endpoint credentials are missing` | `apiKeyEnv` 的环境变量没生效；Desktop 版直接用 `apiKey`，或写系统环境变量后重启 |
-| 图片能发出去但模型说看不到 | 说明插件没插桩成功（看日志有没有 `bridging image input for [...]`），或 `provider`/`model` 与请求实际使用的不一致 |
+| 图片能发出去但模型说看不到 | 看日志有没有 `bridging image input for [...]` 和 `auto vision: p/m`，再确认这次请求用的 provider 在 `routes` 范围内 |
 | 描述太啰嗦 / 太简略 | 用 `prompt` 覆盖内置指令 |
 
 插件的日志前缀是 `[vision-bridge]`。
@@ -185,7 +206,7 @@ dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
 ## 开发
 
 ```bash
-node --test test/unit/                  # 25 个离线测试：请求改写、缓存、并发、失败回退、endpoint 后端
+node --test test/unit/                  # 33 个离线测试：请求改写、缓存、并发、失败回退、endpoint 后端
 node --test test/real-runtime.test.mjs  # 5 个针对真实 @deepseek-ai/dsh-llm 的集成测试（装不到依赖时自动跳过）
 ```
 
@@ -212,5 +233,7 @@ A screenshot. Visible text reads exactly: MAGIC-CAPTION-42.
 ## License
 
 MIT
+
+
 
 

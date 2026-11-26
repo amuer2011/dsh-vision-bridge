@@ -67,6 +67,7 @@ export function createLlm(routes) {
   const llm = {
     async resolveModelInfo(provider, model) {
       const route = routes[`${provider}/${model}`]
+      if (route === undefined && model.startsWith('unknown-')) throw new Error(`no such model: ${provider}/${model}`)
       return {
         provider,
         model,
@@ -74,6 +75,23 @@ export function createLlm(routes) {
         defaultMaxTokens: 4096,
         contextWindow: 65536,
       }
+    },
+    listProviders() {
+      const providers = [...new Set(Object.keys(routes).map((key) => key.split('/')[0]))]
+      return providers.map((id) => ({ id, name: id }))
+    },
+    async listModels(provider) {
+      return Object.keys(routes)
+        .filter((key) => key.startsWith(`${provider}/`))
+        .map((key) => {
+          const model = key.slice(provider.length + 1)
+          return {
+            provider,
+            id: model,
+            name: model,
+            inputModalities: routes[key].image === true ? ['text', 'image'] : ['text'],
+          }
+        })
     },
     async prepareCall(config) {
       const modelInfo = await llm.resolveModelInfo(config.provider, config.model)
@@ -97,9 +115,10 @@ export function createLlm(routes) {
  * Build a fake plugin context.
  * @param {object} llm - the fake llm service.
  * @param {object} [attachments] - optional fake attachment service.
+ * @param {Record<string, object>} [services] - extra services reachable through `ctx.get()`.
  * @returns {object} the context plus lifecycle helpers.
  */
-export function createContext(llm, attachments) {
+export function createContext(llm, attachments, services = {}) {
   /** @type {(() => void)[]} */
   const disposers = []
   const logs = []
@@ -111,7 +130,8 @@ export function createContext(llm, attachments) {
       debug: () => {},
     },
     get(name) {
-      return name === 'attachments' ? attachments : undefined
+      if (name === 'attachments') return attachments
+      return services[name]
     },
     effect(factory) {
       disposers.push(factory())

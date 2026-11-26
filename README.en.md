@@ -93,9 +93,26 @@ dsh plugin --profile desktop add github:<your-name>/dsh-vision-bridge
 dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
 ```
 
-Then edit `$DSH_HOME/profiles/<profile>/cordis.patch.yml` (`C:\Users\<you>\.dsh\profiles\desktop\cordis.patch.yml` on Windows) and override the inserted row.
+Nothing usually needs configuring: the shipped row bridges every text-only route (`routes: ['*']`) and discovers the vision backend automatically. To change behaviour, edit the profile patch file:
+
+```
+C:\Users\<you>\.dsh\profiles\desktop\cordis.patch.yml
+```
+
+(That is DSH's profile patch file — a YAML list that already holds other rows. Append the `- id: vision-bridge` block at the end; saving it triggers an HMR reload.)
 
 ## Configuration
+
+### Zero config (default)
+
+Leave `vision` out and the plugin picks an image-capable model the first time an image appears. Discovery order:
+
+1. routes named in `vision.prefer`;
+2. the profile's **default model** (the one selected under Settings → Models);
+3. catalog models whose metadata declares `image` input;
+4. `vision.autoModels` (default `['deepseek-flash', 'deepseek-v4.1-flash']`) probed on every provider.
+
+Each candidate is verified against the adapter's real `inputModalities`, so text-only routes are skipped, and a candidate that fails hands over to the next one. The winner is logged as `[vision-bridge] auto vision: <provider>/<model>`.
 
 ### Reuse a vision route already in the harness
 
@@ -106,8 +123,8 @@ Then edit `$DSH_HOME/profiles/<profile>/cordis.patch.yml` (`C:\Users\<you>\.dsh\
     routes: ['commandcode-deepseek', 'shenwen']
     vision:
       backend: route
-      provider: openrouter                 # any configured route that accepts images
-      model: qwen2.5-vl-72b-instruct
+      provider: deepseek-account           # any configured route that accepts images
+      model: deepseek-flash
 ```
 
 `provider` is the route key shown under Settings → Models; `model` must be an image-capable model on that route.
@@ -136,7 +153,9 @@ Then edit `$DSH_HOME/profiles/<profile>/cordis.patch.yml` (`C:\Users\<you>\.dsh\
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `routes` | `['*']` | Routes to bridge: `provider`, `provider/model`, `*` globs; `'*'` alone means every text-only route |
-| `vision.backend` | inferred | `route` or `endpoint`; `baseURL` implies `endpoint` |
+| `vision.backend` | `auto` | `auto`, `route` or `endpoint`; `baseURL` implies `endpoint`, `provider`+`model` implies `route` |
+| `vision.prefer` | `[]` | routes tried first in `auto` mode (`provider` or `provider/model`) |
+| `vision.autoModels` | `['deepseek-flash', 'deepseek-v4.1-flash']` | model ids probed on every provider in `auto` mode |
 | `vision.provider` / `vision.model` | — | required for the `route` backend |
 | `vision.baseURL` / `vision.model` | — | required for the `endpoint` backend |
 | `vision.api` | `chat-completions` | `chat-completions` or `responses` |
@@ -173,9 +192,11 @@ No workflow change:
 | Symptom | Fix |
 | --- | --- |
 | still `does not support image input` | `routes` does not match; use the provider key from Settings → Models (e.g. `commandcode-deepseek`), not the display name |
+| auto discovery finds nothing (log: `no image-capable route was found`) | set `vision.provider` + `vision.model`, or add your vision model ids to `vision.autoModels` |
+| auto discovery picks the wrong model | bias it with `vision.prefer: ['deepseek-account']`, or pin `provider` + `model` |
 | log says `vision route … does not accept image input` | `vision.provider/model` is not image capable itself — pick a real vision model |
 | log says `vision endpoint credentials are missing` | the `apiKeyEnv` variable is not visible to DSH; use `apiKey` or a system env var plus restart |
-| image is accepted but the model cannot see it | check the log for `bridging image input for [...]`; if missing, the plugin is not mounted for that route |
+| image is accepted but the model cannot see it | look for `bridging image input for [...]` and `auto vision: p/m`; confirm the route in use is covered by `routes` |
 | descriptions are too long or too short | override `prompt` |
 
 Log lines are prefixed with `[vision-bridge]`.
@@ -183,7 +204,7 @@ Log lines are prefixed with `[vision-bridge]`.
 ## Development
 
 ```bash
-node --test test/unit/                  # 25 offline tests
+node --test test/unit/                  # 33 offline tests
 node --test test/real-runtime.test.mjs  # 5 tests against @deepseek-ai/dsh-llm (skipped when unresolvable)
 ```
 
@@ -207,6 +228,8 @@ That request contained no image bytes at all.
 ## License
 
 MIT
+
+
 
 
 

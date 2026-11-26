@@ -40,6 +40,22 @@ test('endpoint backend is inferred from baseURL and normalizes the URL', () => {
   assert.equal(settings.vision.apiKeyEnv, 'KEY')
 })
 
+test('an omitted vision block means auto discovery', () => {
+  const settings = normalizeConfig({})
+  assert.equal(settings.vision.backend, 'auto')
+  assert.deepEqual(settings.vision.prefer, [])
+  assert.deepEqual(settings.vision.autoModels, ['deepseek-flash', 'deepseek-v4.1-flash'])
+})
+
+test('auto discovery accepts prefer and custom probe ids', () => {
+  const settings = normalizeConfig({
+    vision: { backend: 'auto', prefer: ['deepseek-account', ''], autoModels: ['qwen-vl-max'] },
+  })
+  assert.equal(settings.vision.backend, 'auto')
+  assert.deepEqual(settings.vision.prefer, ['deepseek-account'])
+  assert.deepEqual(settings.vision.autoModels, ['qwen-vl-max'])
+})
+
 test('an incomplete vision backend is rejected with a readable message', () => {
   assert.throws(
     () => normalizeConfig({ vision: { backend: 'route', provider: 'p' } }),

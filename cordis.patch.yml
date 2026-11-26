@@ -2,7 +2,14 @@
 #
 # Installing this package adds the row below to the profile it is installed in.
 # Override `config` from your own profile patch (`$DSH_HOME/profiles/<name>/cordis.patch.yml`)
-# with a row that uses the same `id`:
+# with a row that uses the same `id`.
+#
+# The shipped defaults need no configuration: `routes: ['*']` bridges every
+# text-only route, and the vision backend is discovered automatically at the
+# first image (the profile's default model when it accepts images, then any
+# catalog model that declares `image`, then `vision.autoModels` on each
+# provider). Point `vision` somewhere explicit only when discovery picks the
+# wrong model:
 #
 #   - id: vision-bridge
 #     name: 'dsh-vision-bridge'
@@ -13,8 +20,6 @@
 #         provider: <a vision-capable provider route>
 #         model: <a vision-capable model>
 #
-# The row is inert until `vision` names a working backend: the plugin logs a
-# warning and stays disabled instead of changing request behaviour.
 - insert:
     - id: vision-bridge
       name: 'dsh-vision-bridge'
@@ -31,8 +36,19 @@
         # Keep failed captures visible to the model as a short note, or leave
         # the image block alone so the harness's own placeholder applies.
         onError: keep
-        # Uncomment after installation and point it at a vision model:
+        # Automatic discovery (default when `vision` is omitted):
+        # vision:
+        #   backend: auto
+        #   prefer: ['deepseek-account']       # try these routes first
+        #   autoModels: ['deepseek-flash']     # ids probed on every provider
+        #
+        # Explicit backends:
         # vision:
         #   backend: route
         #   provider: your-vision-provider
         #   model: your-vision-model
+        # vision:
+        #   backend: endpoint
+        #   baseURL: https://api.example.com/v1
+        #   model: gpt-4o-mini
+        #   apiKey: sk-...
