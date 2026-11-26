@@ -27,6 +27,30 @@ pi-ai 适配器的 `defaultInput` 默认是 `['text']`，所以任何没有显�
 
 对模型来说，这张图等于不存在。
 
+## 已经兼容的 provider
+
+| Provider 路由 | 模型 | 需要插件吗 | 状态 |
+| --- | --- | --- | --- |
+| `deepseek-official` / `deepseek-account`（DeepSeek 官方账号） | `deepseek-flash` | 不需要，原生支持读图 | ✅ 实测：直接把截图内容读出来了，插件会自动跳过 |
+| `commandcode-deepseek` | `deepseek-flash` | 需要（纯文本模型） | ✅ 实测：桥接生效，用 `deepseek-official/deepseek-flash` 当眼睛，贴图后模型准确描述了 Arthas `dashboard` 截图 |
+| `shenwen` | `deepseek-v4.1-flash` | 需要 | ⚠️ 代码路径与 `commandcode-deepseek` 完全相同（pi-ai + `openai-responses`），但本机到 `api.shenwenai.com` TLS 连不通，未实测 |
+| 任意 `@deepseek-ai/dsh-llm-pi-ai` 文本路由 | — | 需要 | ✅ 通用：用只声明 `text` 的桩路由跑通了端到端 |
+
+只要路由走 pi-ai 适配器、且没有声明 `image` 输入，把它的 provider key 加进 `routes` 就能用；配一个能看图的视觉后端即可，最省事的就是拿官方账号的 `deepseek-flash` 当眼睛：
+
+```yaml
+- id: vision-bridge
+  name: 'dsh-vision-bridge'
+  config:
+    routes: ['commandcode-deepseek', 'shenwen']
+    vision:
+      backend: route
+      provider: deepseek-account     # 你 profile 里官方账号路由的 key
+      model: deepseek-flash
+```
+
+> 路由 key 以「设置 → 模型」里显示的为准：Desktop 0.2.1 里官方账号路由叫 `deepseek-account`，CLI 0.2.0 里叫 `deepseek-official`。
+
 ## 插件做了什么
 
 1. **放开准入**：包装 `ctx.llm.resolveModelInfo`，给命中的路由补上 `image` 输入模态。上传图片、`read_image` 工具结果都能正常进入会话（只影响能力查询，不改变适配器真实收发的内容）。
@@ -120,8 +144,8 @@ dsh plugin --profile desktop add file:D:/code/dsh-vision-bridge
 | `vision.api` | `chat-completions` | `chat-completions` 或 `responses` |
 | `vision.apiKey` / `vision.apiKeyEnv` | — | `endpoint` 后端的鉴权 |
 | `vision.headers` | `{}` | 额外请求头 |
-| `prompt` | 内置 | 描述图片用的指令。内置要求逐字转写文字、保留缩进、说明报错 |
-| `timeoutMs` | `90000` | 单张图的描述超时 |
+| `prompt` | 内置 | 描述图片用的指令。内置要求转写关键行（命令 / 报错 / 栈帧）、压缩重复内容、控制在 400 词内 |
+| `timeoutMs` | `120000` | 单张图的描述超时 |
 | `concurrency` | `2` | 同时描述几张图 |
 | `maxImagesPerRequest` | `12` | 单次请求最多处理几张图，多余的交给内置占位符 |
 | `cache` | `true` | 同一张图（同一 `attachmentId`）只描述一次，进程内缓存 |
@@ -188,3 +212,5 @@ A screenshot. Visible text reads exactly: MAGIC-CAPTION-42.
 ## License
 
 MIT
+
+

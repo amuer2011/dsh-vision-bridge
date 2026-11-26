@@ -27,6 +27,30 @@ The pi-ai adapter's `defaultInput` is `['text']`, so every route that does not e
 
 For the model, the image might as well not exist.
 
+## Providers verified so far
+
+| Provider route | Model | Plugin needed | Status |
+| --- | --- | --- | --- |
+| `deepseek-official` / `deepseek-account` (DeepSeek account) | `deepseek-flash` | no — reads images natively | ✅ verified: transcribed a screenshot directly; the plugin steps aside |
+| `commandcode-deepseek` | `deepseek-flash` | yes (text-only) | ✅ verified: bridged end to end, using `deepseek-official/deepseek-flash` as the eyes; the model described an Arthas `dashboard` screenshot correctly |
+| `shenwen` | `deepseek-v4.1-flash` | yes | ⚠️ same shape as `commandcode-deepseek` (pi-ai + `openai-responses`), but `api.shenwenai.com` was unreachable from the test machine (TLS), so it is untested |
+| any `@deepseek-ai/dsh-llm-pi-ai` text route | — | yes | ✅ generic: end-to-end against a stub route that declares only `text` |
+
+Any pi-ai route that does not declare `image` input works: add its provider key to `routes` and point the plugin at a vision backend. The cheapest backend is usually your own account model:
+
+```yaml
+- id: vision-bridge
+  name: 'dsh-vision-bridge'
+  config:
+    routes: ['commandcode-deepseek', 'shenwen']
+    vision:
+      backend: route
+      provider: deepseek-account     # the official route key used by your profile
+      model: deepseek-flash
+```
+
+> Route keys depend on the build: Desktop 0.2.1 calls the official route `deepseek-account`, the CLI 0.2.0 calls it `deepseek-official`.
+
 ## What the plugin does
 
 1. **Admits the image** — it wraps `ctx.llm.resolveModelInfo` and adds the `image` modality for the routes you list, so prompt uploads and `read_image` results enter the session normally. This only changes capability reporting; it does not pretend the provider can see.
@@ -118,8 +142,8 @@ Then edit `$DSH_HOME/profiles/<profile>/cordis.patch.yml` (`C:\Users\<you>\.dsh\
 | `vision.api` | `chat-completions` | `chat-completions` or `responses` |
 | `vision.apiKey` / `vision.apiKeyEnv` | — | endpoint credentials |
 | `vision.headers` | `{}` | extra request headers |
-| `prompt` | built in | caption instruction; the built-in one asks for verbatim text, preserved indentation and error callouts |
-| `timeoutMs` | `90000` | per-image caption deadline |
+| `prompt` | built in | caption instruction; the built-in one asks for the meaningful lines (commands, errors, stack frames), compresses repetition and stays under ~400 words |
+| `timeoutMs` | `120000` | per-image caption deadline |
 | `concurrency` | `2` | images captioned in parallel |
 | `maxImagesPerRequest` | `12` | images bridged per request; extras fall back to the built-in placeholder |
 | `cache` | `true` | one caption per attachment id for the process lifetime |
@@ -183,3 +207,6 @@ That request contained no image bytes at all.
 ## License
 
 MIT
+
+
+

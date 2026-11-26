@@ -22,7 +22,7 @@ test('normalizeConfig applies documented defaults', () => {
   assert.equal(settings.advertiseImages, true)
   assert.equal(settings.cache, true)
   assert.equal(settings.onError, 'keep')
-  assert.equal(settings.timeoutMs, 90_000)
+  assert.equal(settings.timeoutMs, 120_000)
   assert.equal(settings.concurrency, 2)
   assert.equal(settings.maxImagesPerRequest, 12)
   assert.equal(settings.prompt, DEFAULT_PROMPT)
@@ -59,3 +59,4 @@ test('enabled: false disables the plugin without touching configuration', () => 
   const settings = normalizeConfig({ enabled: false, vision: { backend: 'route', provider: 'p', model: 'm' } })
   assert.equal(settings.enabled, false)
 })
+
