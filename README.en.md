@@ -168,6 +168,7 @@ Each candidate is verified against the adapter's real `inputModalities`, so text
 | `cache` | `true` | one caption per attachment id for the process lifetime |
 | `onError` | `keep` | `keep` leaves the image block (harness placeholder); `note` replaces it with an explanation |
 | `advertiseImages` | `true` | report `image` for the routes; `false` only rewrites already-admitted requests |
+| `compat.emptyToolArguments` | `false` | rewrite zero-argument tool calls from `{}` to `{"_":true}`. Gateways that convert the request to Anthropic Messages (sub2api among them) drop an empty `tool_use.input`, so one turn containing `working_directory`, `job_list` or `get_goal` fails with a 400 |
 | `debug` | `false` | verbose logging |
 
 ## What it looks like in use
@@ -198,6 +199,7 @@ No workflow change:
 | log says `vision endpoint credentials are missing` | the `apiKeyEnv` variable is not visible to DSH; use `apiKey` or a system env var plus restart |
 | image is accepted but the model cannot see it | look for `bridging image input for [...]` and `auto vision: p/m`; confirm the route in use is covered by `routes` |
 | descriptions are too long or too short | override `prompt` |
+| a turn suddenly fails with `400 … expected nonoptional, received undefined at "…input"`, and that turn called a zero-argument tool such as `working_directory`, `job_list` or `get_goal` | the gateway (sub2api and friends) drops an empty Anthropic `tool_use.input`. Enable `compat: { emptyToolArguments: true }` — this happens with or without images |
 
 Log lines are prefixed with `[vision-bridge]`.
 

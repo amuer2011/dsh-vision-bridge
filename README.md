@@ -170,6 +170,7 @@ C:\Users\<你>\.dsh\profiles\desktop\cordis.patch.yml
 | `cache` | `true` | 同一张图（同一 `attachmentId`）只描述一次，进程内缓存 |
 | `onError` | `keep` | 失败时：`keep` 保留图片块（由 DSH 输出占位符）；`note` 换成一段说明让模型知道有图但没看到 |
 | `advertiseImages` | `true` | 是否给命中路由补 `image` 模态；设成 `false` 时只改写请求、不放宽准入 |
+| `compat.emptyToolArguments` | `false` | 把「无参数工具调用」的空 `{}` 改写成 `{"_":true}` 再发出。某些会转成 Anthropic Messages 的中转（如 sub2api）会丢弃空 `input`，带 `working_directory` / `job_list` / `get_goal` 这类零参数工具的一轮直接 400 |
 | `debug` | `false` | 输出调试日志 |
 
 ## 使用效果
@@ -200,6 +201,7 @@ C:\Users\<你>\.dsh\profiles\desktop\cordis.patch.yml
 | 日志出现 `vision endpoint credentials are missing` | `apiKeyEnv` 的环境变量没生效；Desktop 版直接用 `apiKey`，或写系统环境变量后重启 |
 | 图片能发出去但模型说看不到 | 看日志有没有 `bridging image input for [...]` 和 `auto vision: p/m`，再确认这次请求用的 provider 在 `routes` 范围内 |
 | 描述太啰嗦 / 太简略 | 用 `prompt` 覆盖内置指令 |
+| 某轮突然 `400 ... expected nonoptional, received undefined at "…input"`，且这一轮调用过 `working_directory` / `job_list` / `get_goal` 这类零参数工具 | 中转（sub2api 之类）把空的 Anthropic `tool_use.input` 丢了。开 `compat: { emptyToolArguments: true }`（与图片无关，不开也会犯） |
 
 插件的日志前缀是 `[vision-bridge]`。
 

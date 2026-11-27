@@ -36,6 +36,12 @@
         # Keep failed captures visible to the model as a short note, or leave
         # the image block alone so the harness's own placeholder applies.
         onError: keep
+        # Gateway quirks. Enable when a turn that used a zero-argument tool
+        # (`working_directory`, `job_list`, `get_goal`, …) fails with
+        # `400 … expected nonoptional, received undefined at "…input"`:
+        # compat:
+        #   emptyToolArguments: true
+        #
         # Automatic discovery (default when `vision` is omitted):
         # vision:
         #   backend: auto
