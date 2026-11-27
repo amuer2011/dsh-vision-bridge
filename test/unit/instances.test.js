@@ -67,3 +67,36 @@ test('a second instance keeps its own capability answers', async (t) => {
   assert.deepEqual(rootInfo.inputModalities, ['text', 'image'], 'text-only route advertised')
   assert.deepEqual(scopedInfo.inputModalities, ['text', 'image'], 'already capable route unchanged')
 })
+
+/**
+ * A wrapper around the service (a remote face, a preset realm, a previous
+ * mount) can answer with the advertised capability instead of the adapter's
+ * declaration. The adapter is the ground truth, so bridging must survive it.
+ */
+test('an over-claiming service method does not disable bridging', async (t) => {
+  const { llm, requests } = createLlm({
+    'commandcode-deepseek/deepseek-flash': { image: false },
+    'deepseek-account/deepseek-flash': { image: true, caption: 'captioned anyway' },
+  })
+  const honest = llm.resolveModelInfo
+  llm.resolveModelInfo = async (provider, model) => ({
+    ...(await honest(provider, model)),
+    inputModalities: ['text', 'image'],
+  })
+
+  const harness = createContext(llm)
+  apply(harness.ctx, { routes: ['commandcode-deepseek'], vision: { ...VISION } })
+  t.after(() => harness.dispose())
+
+  const overClaiming = { provider: 'commandcode-deepseek', model: 'deepseek-flash' }
+  for await (const _chunk of llm.stream({
+    provider: overClaiming.provider,
+    model: overClaiming.model,
+    messages: [userMessageWithImage(imageRef(61))],
+  })) {
+    // drain
+  }
+  const sent = requests.at(-1)
+  assert.equal(sent.sawImage, false)
+  assert.match(textBlocks(sent.messages).join('\n'), /captioned anyway/)
+})

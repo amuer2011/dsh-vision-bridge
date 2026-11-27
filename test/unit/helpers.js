@@ -93,6 +93,23 @@ export function createLlm(routes) {
           }
         })
     },
+    registration(provider) {
+      return {
+        provider: { id: provider, name: provider },
+        adapter: {
+          // The ground truth a service-level override cannot fake.
+          async resolveModel(requestedProvider, requestedModel) {
+            const route = routes[`${requestedProvider}/${requestedModel}`]
+            return {
+              provider: requestedProvider,
+              id: requestedModel,
+              name: requestedModel,
+              inputModalities: route?.image === true ? ['text', 'image'] : ['text'],
+            }
+          },
+        },
+      }
+    },
     async prepareCall(config) {
       const modelInfo = await llm.resolveModelInfo(config.provider, config.model)
       return {
