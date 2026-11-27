@@ -171,7 +171,7 @@ C:\Users\<你>\.dsh\profiles\desktop\cordis.patch.yml
 | `onError` | `keep` | 失败时：`keep` 保留图片块（由 DSH 输出占位符）；`note` 换成一段说明让模型知道有图但没看到 |
 | `advertiseImages` | `true` | 是否给命中路由补 `image` 模态；设成 `false` 时只改写请求、不放宽准入 |
 | `compat.emptyToolArguments` | `false` | 把「无参数工具调用」的空 `{}` 改写成 `{"_":true}` 再发出。某些会转成 Anthropic Messages 的中转（如 sub2api）会丢弃空 `input`，带 `working_directory` / `job_list` / `get_goal` 这类零参数工具的一轮直接 400 |
-| `debug` | `false` | 输出调试日志 |
+| `debug` | `false` | 输出调试日志；打开后会额外写到 `$DSH_HOME/vision-bridge-debug.log`（可用 `debugFile` 指定路径），桌面版排障就靠它 |
 
 ## 使用效果
 
@@ -235,6 +235,7 @@ A screenshot. Visible text reads exactly: MAGIC-CAPTION-42.
 ## License
 
 MIT
+
 
 
 

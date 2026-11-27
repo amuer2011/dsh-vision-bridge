@@ -121,6 +121,8 @@ export function createLlm(routes) {
 export function createContext(llm, attachments, services = {}) {
   /** @type {(() => void)[]} */
   const disposers = []
+  /** @type {Map<string, Function[]>} */
+  const listeners = new Map()
   const logs = []
   const ctx = {
     llm,
@@ -133,6 +135,15 @@ export function createContext(llm, attachments, services = {}) {
       if (name === 'attachments') return attachments
       return services[name]
     },
+    on(name, listener) {
+      const list = listeners.get(name) ?? []
+      list.push(listener)
+      listeners.set(name, list)
+      return () => {
+        const current = listeners.get(name) ?? []
+        listeners.set(name, current.filter((entry) => entry !== listener))
+      }
+    },
     effect(factory) {
       disposers.push(factory())
     },
@@ -140,6 +151,9 @@ export function createContext(llm, attachments, services = {}) {
   return {
     ctx,
     logs,
+    emit(name, payload) {
+      for (const listener of listeners.get(name) ?? []) listener(payload)
+    },
     dispose() {
       for (const disposer of disposers.reverse()) disposer()
       disposers.length = 0

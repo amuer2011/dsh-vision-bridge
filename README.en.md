@@ -169,7 +169,7 @@ Each candidate is verified against the adapter's real `inputModalities`, so text
 | `onError` | `keep` | `keep` leaves the image block (harness placeholder); `note` replaces it with an explanation |
 | `advertiseImages` | `true` | report `image` for the routes; `false` only rewrites already-admitted requests |
 | `compat.emptyToolArguments` | `false` | rewrite zero-argument tool calls from `{}` to `{"_":true}`. Gateways that convert the request to Anthropic Messages (sub2api among them) drop an empty `tool_use.input`, so one turn containing `working_directory`, `job_list` or `get_goal` fails with a 400 |
-| `debug` | `false` | verbose logging |
+| `debug` | `false` | verbose logging, also appended to `$DSH_HOME/vision-bridge-debug.log` (override with `debugFile`) — the trail to read when the desktop app silently keeps the placeholder |
 
 ## What it looks like in use
 
@@ -230,6 +230,7 @@ That request contained no image bytes at all.
 ## License
 
 MIT
+
 
 
 
