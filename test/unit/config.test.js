@@ -56,6 +56,18 @@ test('auto discovery accepts prefer and custom probe ids', () => {
   assert.deepEqual(settings.vision.autoModels, ['qwen-vl-max'])
 })
 
+test('debug resolves a log file even without DSH_HOME in the process', () => {
+  const off = normalizeConfig({})
+  assert.equal(off.debugFile, '', 'no log file unless debugging is on')
+
+  const on = normalizeConfig({ debug: true })
+  assert.match(on.debugFile, /vision-bridge-debug\.log$/)
+  assert.match(on.debugFile, /\.dsh/)
+
+  const explicit = normalizeConfig({ debug: true, debugFile: 'D:\\tmp\\vb.log' })
+  assert.equal(explicit.debugFile, 'D:/tmp/vb.log')
+})
+
 test('an incomplete vision backend is rejected with a readable message', () => {
   assert.throws(
     () => normalizeConfig({ vision: { backend: 'route', provider: 'p' } }),
